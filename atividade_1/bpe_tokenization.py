@@ -26,6 +26,8 @@ class BPETokenization:
     encode(text: str)
         Apply all the sub-methods to encode text using the BPE algorithm.
     
+    decode(ids: List[int])
+        Decode a list of IDs into the original text.
     """
     def __init__(self, k: int=10):
         self.k = k
@@ -86,3 +88,13 @@ class BPETokenization:
             next_id += 1
 
         return token_ids
+
+    def decode(self, ids: List[int]) -> str:
+        """Decode a list of IDs into the original text."""
+        decoded = []
+        for i in ids:
+            if i in self.reverse_vocab:
+                decoded.extend(self.reverse_vocab[i])
+            else:
+                decoded.append(i)
+        return bytes(decoded).decode("utf-8", errors="replace")
