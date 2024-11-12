@@ -1,13 +1,14 @@
-from typing import List, Tuple, Dict
+from typing import Iterable, List, Tuple, Dict
+from tqdm import tqdm
 
 class BPETokenization:
     """
-    A class that implements the BPE algorithm.
+    A class that implements the BPE algorithm with a vocabulary size target.
 
     Parameters
     ----------
-    k : int, default=10
-        The number of merge operations performed throughout the algorithm.
+    vocab_size : int, default=1000
+        The target vocabulary size for the BPE algorithm.
 
     Methods
     -------
@@ -16,23 +17,37 @@ class BPETokenization:
 
     get_pair_counts(token_ids: List[int])
         Count the frequency of adjacent pairs in the token list.
-    
+
     find_most_frequent_pair(pair_counts: Dict[Tuple[int, int], int])
         Find the most frequent adjacent pair in the token list.
-    
+
     merge_pair(token_ids: List[int], pair: Tuple[int, int], new_id: int)
         Merge all occurrences of the most frequent pair into a single ID.
-    
+
+    train(data: List[str])
+        Encode all the text provided and updates the object's vocab.
+
     encode(text: str)
         Apply all the sub-methods to encode text using the BPE algorithm.
-    
+
     decode(ids: List[int])
         Decode a list of IDs into the original text.
     """
-    def __init__(self, k: int=10):
-        self.k = k
+    def __init__(self, vocab_size: int = 1000):
+        self.vocab_size = vocab_size
         self.vocab = {}
         self.reverse_vocab = {}
+
+        self.BOS_TOKEN = "<BOS>"
+        self.EOS_TOKEN = "<EOS>"
+        self.BOS_ID = 0
+        self.EOS_ID = 1
+        self.next_id = 2
+        
+        self.vocab[self.BOS_TOKEN] = self.BOS_ID
+        self.vocab[self.EOS_TOKEN] = self.EOS_ID
+        self.reverse_vocab[self.BOS_ID] = self.BOS_TOKEN
+        self.reverse_vocab[self.EOS_ID] = self.EOS_TOKEN
 
     def text_to_byte_ids(self, text: str) -> List[int]:
         """Convert text into a list of byte IDs."""
@@ -62,39 +77,56 @@ class BPETokenization:
                 i += 1
         return new_ids
 
+    def update_vocab(self, pair: Tuple[int, int], new_id: int):
+        """Add the new pair to the vocabulary."""
+        self.vocab[pair] = new_id
+        self.reverse_vocab[new_id] = pair
+
+    def bpe_step(self, token_ids: List[int], next_id: int) -> Tuple[List[int], int]:
+        """Perform one BPE merge operation on token_ids."""
+        pair_counts = self.get_pair_counts(token_ids)
+        if not pair_counts:
+            return token_ids, next_id
+
+        most_frequent_pair = self.find_most_frequent_pair(pair_counts)
+        self.update_vocab(most_frequent_pair, next_id)
+        token_ids = self.merge_pair(token_ids, most_frequent_pair, next_id)
+        return token_ids, next_id + 1
+
     def encode(self, text: str) -> List[int]:
         """Encode text using the BPE algorithm."""
-        # Convert text to byte IDs
-        token_ids = self.text_to_byte_ids(text)
-        # Start new IDs above the byte range
+        token_ids = [self.BOS_ID] + self.text_to_byte_ids(text) + [self.EOS_ID]
         next_id = max(token_ids) + 1
 
-        # for k merges, we
-        for _ in range(self.k):
-            # Build and count the token pairs
-            pair_counts = self.get_pair_counts(token_ids)
-            if not pair_counts:
+        while len(self.vocab) < self.vocab_size:
+            token_ids, next_id = self.bpe_step(token_ids, next_id)
+            if not token_ids:
                 break
-            
-            # Find the most frequent pair
-            most_frequent_pair = self.find_most_frequent_pair(pair_counts)
-
-            # Assign a new int ID to the most frequent pair
-            self.vocab[most_frequent_pair] = next_id
-            self.reverse_vocab[next_id] = most_frequent_pair
-
-            # Merge the most frequent pair
-            token_ids = self.merge_pair(token_ids, most_frequent_pair, next_id)
-            next_id += 1
-
         return token_ids
 
+    def train(self, data: Iterable[str], progress_bar: bool = True):
+        """
+        Train the tokenizer on a large corpus, accepting an iterable of text instances.
+        """
+        next_id = 256
+        iterable = tqdm(data) if progress_bar else data
+
+        for text in iterable:
+            token_ids = self.text_to_byte_ids(text)
+            while len(self.vocab) < self.vocab_size:
+                token_ids, next_id = self.bpe_step(token_ids, next_id)
+                if not token_ids:
+                    break
+
     def decode(self, ids: List[int]) -> str:
-        """Decode a list of IDs into the original text."""
+        """Decode a list of IDs into the original text, ignoring special tokens."""
         decoded = []
         for i in ids:
-            if i in self.reverse_vocab:
-                decoded.extend(self.reverse_vocab[i])
-            else:
+            if i == self.BOS_ID or i == self.EOS_ID:
+                continue
+            elif i < 256:
                 decoded.append(i)
+            else:
+                decoded.append(ord('?'))
+        
         return bytes(decoded).decode("utf-8", errors="replace")
