@@ -6,7 +6,7 @@ import nltk
 
 nltk.data.path.append('/root/nltk_data')
 
-class stopwords_transformer(TransformerMixin, BaseEstimator):
+class StopwordsTransformer(TransformerMixin, BaseEstimator):
     """
     A transformer class used to remove stopwords from text data.
     Stopwords can be specified in multiple languages supported by NLTK.
@@ -171,7 +171,7 @@ class stopwords_transformer(TransformerMixin, BaseEstimator):
 
         return X_copy
 
-class stemmer_transformer(TransformerMixin, BaseEstimator):
+class StemmerTransformer(TransformerMixin, BaseEstimator):
     """
     A transformer class used for stemming words. It supports various stemming
     methods available in the NLTK package.
@@ -306,7 +306,7 @@ class stemmer_transformer(TransformerMixin, BaseEstimator):
 
         return X_copy
 
-class lemmatizer_transformer(TransformerMixin, BaseEstimator):
+class LemmatizerTransformer(TransformerMixin, BaseEstimator):
     """
     A transformer class designed for lemmatization using the simplemma package.
     Lemmatization groups inflected word forms together, allowing analysis as a
