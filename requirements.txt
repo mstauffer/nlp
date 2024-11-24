@@ -4,3 +4,7 @@ tqdm
 torch
 numpy
 nltk
+scikit-learn
+pandas
+simplemma
+matplotlib
