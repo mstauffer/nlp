@@ -96,13 +96,33 @@ class BPETokenization:
     def encode(self, text: str) -> List[int]:
         """Encode text using the BPE algorithm."""
         token_ids = [self.BOS_ID] + self.text_to_byte_ids(text) + [self.EOS_ID]
-        next_id = max(token_ids) + 1
+        next_id = max(self.vocab.values()) + 1
 
         while len(self.vocab) < self.vocab_size:
-            token_ids, next_id = self.bpe_step(token_ids, next_id)
-            if not token_ids:
+            pair_counts = self.get_pair_counts(token_ids)
+
+            if not pair_counts:
+                print("No more pairs to merge. Stopping encoding.")
                 break
+
+            most_frequent_pair = self.find_most_frequent_pair(pair_counts)
+
+            if most_frequent_pair in self.vocab:
+                print(f"Pair {most_frequent_pair} already in vocabulary. Stopping encoding.")
+                break
+
+            self.update_vocab(most_frequent_pair, next_id)
+            new_token_ids = self.merge_pair(token_ids, most_frequent_pair, next_id)
+
+            if new_token_ids == token_ids:
+                print("Token IDs stabilized. Stopping encoding.")
+                break
+
+            token_ids = new_token_ids
+            next_id += 1
+
         return token_ids
+
 
     def train(self, data: Iterable[str], progress_bar: bool = True):
         """
@@ -114,9 +134,12 @@ class BPETokenization:
         for text in iterable:
             token_ids = self.text_to_byte_ids(text)
             while len(self.vocab) < self.vocab_size:
+                prev_vocab_size = len(self.vocab)
                 token_ids, next_id = self.bpe_step(token_ids, next_id)
-                if not token_ids:
-                    break
+                # safeguard to prevent infinite loops
+                if len(self.vocab) == prev_vocab_size:
+                    print("No more pairs to merge. Stopping training.")
+                    return
 
     def decode(self, ids: List[int]) -> str:
         """Decode a list of IDs into the original text, ignoring special tokens."""
