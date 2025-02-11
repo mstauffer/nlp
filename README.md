@@ -20,3 +20,4 @@ pip install -r requirements.txt
 1. [Byte-Pair Encoding tokenization](atividade_1/bpe_application.ipynb)
 1. [Bigram Model](atividade_2/bigram_application.ipynb)
 1. [Classification Experiment](atividade_3/base_experiment/classification_experiment.ipynb)
+1. [BERT Classification Experiment](atividade_4/bert_cls_computers.ipynb)
