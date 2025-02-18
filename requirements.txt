@@ -9,3 +9,4 @@ pandas
 simplemma
 matplotlib
 lightgbm
+tiktoken
